@@ -26,10 +26,11 @@
 //    opposite sides in the same cycle.
 //
 // 4. Fixed price range
-//    BASE_PRICE = $100.00 × 10000 = 1,000,000
+//    BASE_PRICE = $175.00 × 10000 = 1,750,000
 //    TICK_SIZE  = $0.01   × 10000 = 100 (1 cent resolution)
-//    MAX_PRICE_LEVELS = 2048 → covers $100.00 to $120.47
-//    For the demo (AAPL ~$182), shift BASE_PRICE to 1,750,000 ($175.00).
+//    MAX_PRICE_LEVELS = 64 → covers $175.00 to $175.63
+//    (reduced from 2048 to keep the FIND_BEST_BID/FIND_BEST_ASK unroll
+//    within what the Vitis scheduler can synthesize)
 //    A production implementation would use runtime-configurable base price.
 // =========================================================================
 

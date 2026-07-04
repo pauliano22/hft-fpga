@@ -6,14 +6,14 @@ Implemented entirely in hardware (SystemVerilog & Vitis HLS) for Xilinx Virtex U
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Architecture](https://img.shields.io/badge/Architecture-Sparse%20MoE-orange)
-![Verified](https://img.shields.io/badge/Vitis%20HLS-Verified%20@%20350MHz-brightgreen)
+![Verified](https://img.shields.io/badge/Vitis%20HLS-Verified%20@%20250MHz-brightgreen)
 
 ---
 
 ## Verified Performance Metrics
 
 ### 1. The 444ns Timing Budget (Synthesis)
-Using Vitis HLS 2025.2, we verified the cycle-by-cycle latency of the full pipeline. By utilizing a 350MHz clock and parallel data paths, the engine moves from the 10GbE MAC to a trade decision in just 111 clock cycles.
+Using Vitis HLS 2025.2, we verified the cycle-by-cycle latency of the full pipeline. By utilizing a 250MHz clock and parallel data paths, the engine moves from the 10GbE MAC to a trade decision in just 111 clock cycles.
 
 ![Latency Waterfall](docs/latency_waterfall.png)
 
@@ -70,8 +70,35 @@ We utilize a "Golden Model" approach to ensure 100% numerical parity between har
 
 ## Build & Run
 
-**Synthesize Hardware:**
+**Golden Model (C++ reference, no toolchain required):**
+```bash
+cd src/golden_model
+make test-data   # generate synthetic ITCH data
+make test        # build + run unit tests
+make bench       # build + run throughput benchmark
+```
+
+**HLS C-Simulation (g++ only, no Xilinx toolchain required):**
+```bash
+cd src/hls
+make        # compile all testbenches
+make test   # run all 12 tests
+```
+
+**Verilator RTL Simulation:**
+```bash
+cd sim/verilator
+make
+./obj_dir/Vtop --file ../../data/sample.itch --no-vcd --limit 50000
+```
+
+**Synthesize Hardware (requires a licensed Vitis HLS install):**
 ```bash
 source /tools/Xilinx/Vitis_HLS/2025.2/settings64.sh
 cd src/hls
 vitis-run --mode hls --tcl run_synth.tcl
+```
+
+## License
+
+MIT — see [LICENSE](LICENSE).

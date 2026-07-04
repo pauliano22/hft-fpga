@@ -81,21 +81,24 @@ For the MoE expert (8→16→1 MLP): 128+16 = 144 multiplications.
 
 ### Why `ARRAY_PARTITION complete` on bid/ask arrays?
 
-Without partitioning, a 2048-element array maps to a BRAM with 1 read port
-and 1 write port. The FIND_BEST_BID loop needs to read all 2048 elements in
-one cycle → BRAM can only supply 1 per cycle → II = 2048.
+Without partitioning, a 64-element array maps to a BRAM with 1 read port
+and 1 write port. The FIND_BEST_BID loop needs to read all 64 elements in
+one cycle → BRAM can only supply 1 per cycle → II = 64.
 
 With `complete` partitioning, every element becomes its own register (FF).
-All reads are parallel → II = 1. Cost: 2 × 2048 × 32 = 131,072 FFs ≈ 10%
-of xcvu9p's 1.18M FFs — acceptable for a dedicated trading accelerator.
+All reads are parallel → II = 1. Cost: 2 × 64 × 32 = 4,096 FFs ≈ 0.3%
+of xcvu9p's 1.18M FFs — cheap even before accounting for the II win.
 
 ### Price range and tick size
 
 The LOB uses:
 - `BASE_PRICE = 1,750,000` ($175.00)
 - `TICK_SIZE = 100` ($0.01)
-- `MAX_PRICE_LEVELS = 2048`
+- `MAX_PRICE_LEVELS = 64`
 
-This covers $175.00 to $195.47. For a different price center, change
-`BASE_PRICE` in `lob.hpp`. In production, `BASE_PRICE` would be a runtime
+This covers $175.00 to $175.63 (`MAX_PRICE_LEVELS` was reduced from 2048 to
+64 to keep the FIND_BEST_BID/FIND_BEST_ASK combinatorial unroll within what
+the Vitis scheduler can synthesize — see the matching_engine changelog).
+For a different price center, change `BASE_PRICE` in `lob.hpp`. In
+production, `BASE_PRICE` would be a runtime
 configuration register written by the host CPU via AXI-Lite.

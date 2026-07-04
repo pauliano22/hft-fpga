@@ -59,17 +59,17 @@ This is the "dictionary" of the project. Before reading any hardware code, under
 
 This is the most important file. Read it top-to-bottom:
 
-1. **Header comments** (lines 1-21): Explains the ITCH Add Order message layout. **Study the byte offset table** — this is the specification the FSM implements.
+1. **Header comments** (lines 1-30): Explains the ITCH Add Order message layout and the beat-by-beat parse plan. **Study the byte offset table** — this is the specification the FSM implements.
 
-2. **Module ports** (lines 23-44): Inputs from the network (`s_axis_*`), outputs to the next stage (`order_out`), and statistics counters.
+2. **Module ports** (lines 32-54): Inputs from the network (`s_axis_*`), outputs to the next stage (`m_axis_*`), and the stock/order/side/shares/price fields the order book consumes.
 
-3. **FSM states** (lines 49-57): Six states — IDLE, HEADER, ORDER_REF, SIDE_SHARES (folded into ORDER_REF), STOCK, PRICE, SKIP. Draw a state diagram on paper.
+3. **FSM states** (lines 59-67): Six states — IDLE, PARSE_B0, PARSE_B1, PARSE_B2, PARSE_B3, PARSE_B4, EMIT — one state per 8-byte AXI-Stream beat, plus IDLE and a one-cycle EMIT. Draw a state diagram on paper.
 
-4. **`get_byte()` function** (lines 84-89): **Critical** — this is how you extract byte N from a 64-bit big-endian word. The formula `(7 - idx) * 8` inverts the byte index because ITCH is big-endian but AXI-Stream byte 0 is in the MSB.
+4. **Byte extraction** (line 92): **Critical** — there's no separate `get_byte()` function; a `` `BYTE(beat_data, offset) `` macro extracts byte N within a beat via `beat_data[(offset*8) +: 8]`. TDATA[7:0] holds byte 0 (the first byte to arrive on the wire), so no big-endian/little-endian inversion is needed.
 
-5. **Sequential logic** (lines 94-195): The `always_ff` block runs on every clock edge. On reset, everything zeros out. On each valid beat, it accumulates fields byte-by-byte. **Trace through Test 1 from the testbench by hand** — pretend you're the hardware and process each beat.
+5. **Sequential logic** (lines 103-259): The two `always_ff` blocks run on every clock edge. On reset, everything zeros out. On each valid beat, it accumulates fields byte-by-byte using the `` `BYTE `` macro. **Trace through Test 1 from the testbench by hand** — pretend you're the hardware and process each beat.
 
-6. **Combinational next-state** (lines 200-254): The `always_comb` block computes the next state purely based on current state and inputs. No clock — this is wires, not registers.
+6. **Combinational next-state** (lines 261-340): The `always_comb` block computes the next state purely based on current state and inputs. No clock — this is wires, not registers.
 
 **New concept — `always_ff` vs `always_comb`**:
 - `always_ff` = **registers** (stores values across clock cycles, like variables)
