@@ -56,11 +56,16 @@ BookUpdate process_one(
     // ------------------------------------------------------------------
     if (msg.msg_type == MSG_ADD || msg.msg_type == MSG_ADD_F) {
         // ---- Add Order ----
-        // Update price-level share count for the appropriate side
-        if (msg.side == 0) {  // bid
-            bid_shares[price_idx] += msg.shares;
-        } else {              // ask
-            ask_shares[price_idx] += msg.shares;
+        // Update price-level share count for the appropriate side.
+        // price_idx == MAX_PRICE_LEVELS means the price fell outside our
+        // fixed window (see price_to_idx) — skip the array write rather
+        // than indexing one past the end of bid_shares/ask_shares.
+        if (price_idx < MAX_PRICE_LEVELS) {
+            if (msg.side == 0) {  // bid
+                bid_shares[price_idx] += msg.shares;
+            } else {              // ask
+                ask_shares[price_idx] += msg.shares;
+            }
         }
         // Record order in lookup table (using hash of ref number)
         order_ref_table[order_idx]    = msg.order_ref;
@@ -72,17 +77,19 @@ BookUpdate process_one(
         // ---- Delete Order ---- remove entire remaining quantity
         // Only modify if stored ref matches (guard against hash collision)
         if (order_ref_table[order_idx] == msg.order_ref) {
-            if (stored_side == 0) {
-                // Subtract; guard against underflow (should not happen in clean data)
-                if (bid_shares[stored_idx] >= stored_shares)
-                    bid_shares[stored_idx] -= stored_shares;
-                else
-                    bid_shares[stored_idx] = 0;
-            } else {
-                if (ask_shares[stored_idx] >= stored_shares)
-                    ask_shares[stored_idx] -= stored_shares;
-                else
-                    ask_shares[stored_idx] = 0;
+            if (stored_idx < MAX_PRICE_LEVELS) {
+                if (stored_side == 0) {
+                    // Subtract; guard against underflow (should not happen in clean data)
+                    if (bid_shares[stored_idx] >= stored_shares)
+                        bid_shares[stored_idx] -= stored_shares;
+                    else
+                        bid_shares[stored_idx] = 0;
+                } else {
+                    if (ask_shares[stored_idx] >= stored_shares)
+                        ask_shares[stored_idx] -= stored_shares;
+                    else
+                        ask_shares[stored_idx] = 0;
+                }
             }
             // Clear the order slot
             order_ref_table[order_idx]    = 0;
@@ -94,16 +101,18 @@ BookUpdate process_one(
         if (order_ref_table[order_idx] == msg.order_ref) {
             ap_uint<32> exec_qty = (msg.shares <= stored_shares) ?
                                     msg.shares : stored_shares;
-            if (stored_side == 0) {
-                if (bid_shares[stored_idx] >= exec_qty)
-                    bid_shares[stored_idx] -= exec_qty;
-                else
-                    bid_shares[stored_idx] = 0;
-            } else {
-                if (ask_shares[stored_idx] >= exec_qty)
-                    ask_shares[stored_idx] -= exec_qty;
-                else
-                    ask_shares[stored_idx] = 0;
+            if (stored_idx < MAX_PRICE_LEVELS) {
+                if (stored_side == 0) {
+                    if (bid_shares[stored_idx] >= exec_qty)
+                        bid_shares[stored_idx] -= exec_qty;
+                    else
+                        bid_shares[stored_idx] = 0;
+                } else {
+                    if (ask_shares[stored_idx] >= exec_qty)
+                        ask_shares[stored_idx] -= exec_qty;
+                    else
+                        ask_shares[stored_idx] = 0;
+                }
             }
             // Update remaining shares on the order record
             order_shares_table[order_idx] = (stored_shares >= exec_qty) ?
@@ -119,16 +128,18 @@ BookUpdate process_one(
         if (order_ref_table[order_idx] == msg.order_ref) {
             ap_uint<32> cancel_qty = (msg.shares <= stored_shares) ?
                                       msg.shares : stored_shares;
-            if (stored_side == 0) {
-                if (bid_shares[stored_idx] >= cancel_qty)
-                    bid_shares[stored_idx] -= cancel_qty;
-                else
-                    bid_shares[stored_idx] = 0;
-            } else {
-                if (ask_shares[stored_idx] >= cancel_qty)
-                    ask_shares[stored_idx] -= cancel_qty;
-                else
-                    ask_shares[stored_idx] = 0;
+            if (stored_idx < MAX_PRICE_LEVELS) {
+                if (stored_side == 0) {
+                    if (bid_shares[stored_idx] >= cancel_qty)
+                        bid_shares[stored_idx] -= cancel_qty;
+                    else
+                        bid_shares[stored_idx] = 0;
+                } else {
+                    if (ask_shares[stored_idx] >= cancel_qty)
+                        ask_shares[stored_idx] -= cancel_qty;
+                    else
+                        ask_shares[stored_idx] = 0;
+                }
             }
             order_shares_table[order_idx] = (stored_shares >= cancel_qty) ?
                                              (ap_uint<32>)(stored_shares - cancel_qty) : (ap_uint<32>)0;
@@ -138,25 +149,29 @@ BookUpdate process_one(
         // ---- Order Replace: delete original, add replacement ----
         // Step 1: remove original order
         if (order_ref_table[order_idx] == msg.order_ref) {
-            if (stored_side == 0) {
-                if (bid_shares[stored_idx] >= stored_shares)
-                    bid_shares[stored_idx] -= stored_shares;
-                else
-                    bid_shares[stored_idx] = 0;
-            } else {
-                if (ask_shares[stored_idx] >= stored_shares)
-                    ask_shares[stored_idx] -= stored_shares;
-                else
-                    ask_shares[stored_idx] = 0;
+            if (stored_idx < MAX_PRICE_LEVELS) {
+                if (stored_side == 0) {
+                    if (bid_shares[stored_idx] >= stored_shares)
+                        bid_shares[stored_idx] -= stored_shares;
+                    else
+                        bid_shares[stored_idx] = 0;
+                } else {
+                    if (ask_shares[stored_idx] >= stored_shares)
+                        ask_shares[stored_idx] -= stored_shares;
+                    else
+                        ask_shares[stored_idx] = 0;
+                }
             }
         }
         // Step 2: add replacement order at new price
         ap_uint<12> new_price_idx  = price_to_idx(msg.new_price);
         ap_uint<12> new_order_idx  = order_hash(msg.new_order_ref);
-        if (stored_side == 0) {
-            bid_shares[new_price_idx] += msg.new_shares;
-        } else {
-            ask_shares[new_price_idx] += msg.new_shares;
+        if (new_price_idx < MAX_PRICE_LEVELS) {
+            if (stored_side == 0) {
+                bid_shares[new_price_idx] += msg.new_shares;
+            } else {
+                ask_shares[new_price_idx] += msg.new_shares;
+            }
         }
         order_ref_table[new_order_idx]    = msg.new_order_ref;
         order_side_table[new_order_idx]   = stored_side;
