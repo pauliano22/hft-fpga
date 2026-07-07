@@ -90,7 +90,7 @@ For context, 100 nanoseconds is the time it takes light to travel 30 meters. A C
 
 3. **Clock 5**: The parser asserts `order_out.valid = 1` for exactly one cycle, presenting all parsed fields to the next stage.
 
-4. **Clock 6**: The MoE router reads the parsed order, extracts features, and computes gating scores for all 8 experts in a single cycle (fully unrolled/pipelined).
+4. **Clock 6**: The MoE router reads the parsed order, extracts features, and computes gating scores for all 4 experts in a single cycle (fully unrolled/pipelined).
 
 5. **Clock 7**: The top-2 expert MLPs compute their outputs in parallel.
 
@@ -159,7 +159,7 @@ Byte: 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35
 
 ## Stage 2: MoE Router
 
-**Files**: `src/hls/moe_router/moe_router.h`, `moe_router.cpp`
+**Files**: `src/hls/moe_router/moe_router.hpp`, `moe_router.cpp`
 
 ### What is Mixture of Experts (MoE)?
 
@@ -206,7 +206,7 @@ Step 4: Dispatch
 
 ## Stage 3: Expert MLPs
 
-**Files**: `src/hls/experts/expert_mlp.h`, `expert_mlp.cpp`
+**Files**: `src/hls/experts/expert_kernel.hpp`, `expert_kernel.cpp`
 
 Each expert is a 2-layer Multi-Layer Perceptron (MLP):
 
@@ -237,7 +237,7 @@ Input (8 features)
 
 ## Stage 4: Matching Engine
 
-**Files**: `src/hls/matching_engine/matching_engine.h`, `matching_engine.cpp`
+**Files**: `src/hls/matching_engine/lob.hpp`, `lob.cpp`
 
 ### What is a Limit Order Book (LOB)?
 
@@ -421,7 +421,7 @@ We chose parse-as-you-go: the FSM extracts fields from each AXI-Stream beat as i
 The MoE softmax uses `sigmoid(x) ≈ 0.5 + 0.25x` for |x| < 2. This avoids both a lookup table (BRAM cost) and a Taylor series (compute cost). The approximation error is negligible for gating weights.
 
 ### 3. Top-2 experts (K=2)
-With K=2, only 2 of 8 experts run per input. This means the compute cost scales with K, not N — critical for meeting the sub-microsecond budget. The two experts run in parallel on separate hardware.
+With K=2, only 2 of 4 experts run per input. This means the compute cost scales with K, not N — critical for meeting the sub-microsecond budget. The two experts run in parallel on separate hardware.
 
 ### 4. BRAM-addressed LOB
 Using price-as-address gives O(1) access but limits the price range to MAX_PRICE_LEVELS ticks. For a real instrument, this covers ~$40 at $0.01 tick size — sufficient for most liquid stocks.

@@ -63,8 +63,8 @@ The `tools/generate_test_data` binary creates a synthetic `.itch` file with
 `make test` and `make bench` when real Nasdaq data is not available.
 
 ```bash
-# From repo root:
-make test-data            # builds generator and writes data/sample.itch
+cd src/golden_model
+make test-data             # builds generator and writes ../../data/sample.itch
 ```
 
 The generator produces a statistically realistic but **not market-accurate**

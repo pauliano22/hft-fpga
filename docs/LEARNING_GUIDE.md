@@ -85,11 +85,11 @@ Read the ITCH Parser deep-dive after the code to reinforce your understanding.
 ### Read: `docs/ARCHITECTURE.md` — Sections 5-6
 Read about MoE and Expert MLPs. Understand:
 - Why MoE instead of a regular neural network
-- What "top-K" means (only 2 of 8 experts activate)
+- What "top-K" means (only 2 of 4 experts activate)
 - How the router decides which experts to use
 - What ReLU activation does (max(0, x))
 
-### Read: `src/hls/moe_router/moe_router.h`
+### Read: `src/hls/moe_router/moe_router.hpp`
 
 Focus on the data structures:
 - `FeatureVector`: 8 fixed-point numbers representing market state
@@ -116,7 +116,7 @@ Follow the algorithm:
 
 ## Phase 5: The Expert Networks (15 min)
 
-### Read: `src/hls/experts/expert_mlp.h` then `expert_mlp.cpp`
+### Read: `src/hls/experts/expert_kernel.hpp` then `expert_kernel.cpp`
 
 Each expert is a tiny 2-layer neural network:
 - Layer 1: 8 inputs → 16 hidden neurons (with ReLU)
@@ -128,7 +128,7 @@ The code is compact. Notice how `#pragma HLS UNROLL` on the inner loops means al
 
 ## Phase 6: The Order Book (20 min)
 
-### Read: `src/hls/matching_engine/matching_engine.h` then `matching_engine.cpp`
+### Read: `src/hls/matching_engine/lob.hpp` then `lob.cpp`
 
 This implements the Limit Order Book (LOB) — the data structure that tracks all buy and sell orders.
 
@@ -185,7 +185,7 @@ Key parts:
 
 Understand the available targets:
 - `make golden_model` → compile C++ golden model
-- `make run_golden` → run it, generates `golden_trace.csv`
+- `make run_golden` → run it (prints parsed messages and order-book state to stdout)
 - `make verilator_build` → compile RTL into C++ simulator
 - `make verilator_run` → run the simulator, generates waveform
 - `make verify` → run both and compare
@@ -193,11 +193,12 @@ Understand the available targets:
 
 ### Read: `.github/workflows/ci.yml`
 
-Two CI jobs:
-1. **golden-model**: build → run → Valgrind check → upload trace
-2. **verilator-sim**: install Verilator → build → simulate → upload waveform
+Three CI jobs:
+1. **golden-model**: build → run unit tests → benchmark → Valgrind check
+2. **hls-csim**: compile the HLS modules with g++ → run the C-simulation testbenches
+3. **verilator**: install Verilator → build RTL sim → simulate → upload latency plots/CSV
 
-Both must pass green for the project to be considered working.
+All three must pass green for the project to be considered working.
 
 ---
 
@@ -222,7 +223,7 @@ After reading everything, try these to solidify your understanding:
 
 2. **Modify the golden model**: Add a new test order and predict the output before running. Were you right?
 
-3. **Change the expert count**: In `moe_router.h`, change `NUM_EXPERTS` from 8 to 4 and see what changes would be needed.
+3. **Change the expert count**: In `moe_router.hpp`, change `N_EXPERTS` from 4 to 8 and see what changes would be needed.
 
 4. **Read the waveform**: If you have GTKWave, run `make waves` and identify the clock cycles where `order_out.valid` goes high.
 

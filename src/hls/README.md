@@ -24,11 +24,11 @@ which provides functional equivalents of `ap_uint`, `ap_fixed`, and
 ## Running with Vitis HLS
 
 ### Prerequisites
-- Xilinx Vitis HLS 2022.1 or later
+- Xilinx Vitis HLS 2025.2 or later
 - License: node-locked or floating
 
 ```bash
-source /opt/Xilinx/Vitis_HLS/2022.1/settings64.sh
+source /opt/Xilinx/Vitis_HLS/2025.2/settings64.sh
 cd src/hls
 ```
 
