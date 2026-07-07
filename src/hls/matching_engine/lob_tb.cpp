@@ -72,17 +72,17 @@ static BookUpdate send_msg(const OrderMsg& msg) {
 static bool test_add_bid_updates_best() {
     reset_book();
 
-    // Price: $182.50 = 1825000; within range [BASE=1750000, BASE+2047*100]
+    // Price: $175.05 = 1750500; within range [BASE=1750000, BASE+63*100]
     OrderMsg msg{};
     msg.msg_type  = MSG_ADD;
     msg.order_ref = 1ULL;
     msg.side      = 0;          // bid
     msg.shares    = 500;
-    msg.price     = 1825000;    // $182.50
+    msg.price     = 1750500;    // $175.05
 
     BookUpdate upd = send_msg(msg);
 
-    CHECK(upd.best_bid == 1825000, "best_bid should equal added price");
+    CHECK(upd.best_bid == 1750500, "best_bid should equal added price");
     CHECK(upd.best_ask == 0,       "ask side should be empty");
     CHECK(upd.spread   == 0,       "spread undefined when one side empty");
     return true;
@@ -94,22 +94,22 @@ static bool test_add_bid_updates_best() {
 static bool test_spread_and_mid() {
     reset_book();
 
-    // Bid at $182.40
+    // Bid at $175.10
     OrderMsg bid{};
     bid.msg_type = MSG_ADD; bid.order_ref = 10; bid.side = 0;
-    bid.shares = 200; bid.price = 1824000; // $182.40
+    bid.shares = 200; bid.price = 1751000; // $175.10
     send_msg(bid);
 
-    // Ask at $182.60
+    // Ask at $175.30
     OrderMsg ask{};
     ask.msg_type = MSG_ADD; ask.order_ref = 11; ask.side = 1;
-    ask.shares = 150; ask.price = 1826000; // $182.60
+    ask.shares = 150; ask.price = 1753000; // $175.30
     BookUpdate upd = send_msg(ask);
 
-    CHECK(upd.best_bid == 1824000, "best_bid mismatch");
-    CHECK(upd.best_ask == 1826000, "best_ask mismatch");
+    CHECK(upd.best_bid == 1751000, "best_bid mismatch");
+    CHECK(upd.best_ask == 1753000, "best_ask mismatch");
     CHECK(upd.spread   == 2000,    "spread should be $0.20 = 2000");
-    CHECK(upd.mid_price == 1825000, "mid should be $182.50");
+    CHECK(upd.mid_price == 1752000, "mid should be $175.20");
     return true;
 }
 
@@ -121,7 +121,7 @@ static bool test_delete_clears_best() {
 
     OrderMsg add{};
     add.msg_type = MSG_ADD; add.order_ref = 20; add.side = 0;
-    add.shares = 100; add.price = 1800000;
+    add.shares = 100; add.price = 1750000;
     send_msg(add);
 
     OrderMsg del{};
@@ -140,7 +140,7 @@ static bool test_partial_execute() {
 
     OrderMsg add{};
     add.msg_type = MSG_ADD; add.order_ref = 30; add.side = 1; // ask
-    add.shares = 400; add.price = 1810000;
+    add.shares = 400; add.price = 1751000;
     send_msg(add);
 
     // Execute 100 of the 400 shares
@@ -149,7 +149,7 @@ static bool test_partial_execute() {
     BookUpdate upd = send_msg(exec);
 
     // Ask should still exist (300 shares remaining)
-    CHECK(upd.best_ask == 1810000, "ask should still be present after partial execute");
+    CHECK(upd.best_ask == 1751000, "ask should still be present after partial execute");
     CHECK(upd.ask_total_qty == 300, "ask qty should be 300 after partial execute");
     return true;
 }
@@ -169,12 +169,13 @@ static bool test_vs_golden_model() {
         uint64_t new_ref; uint32_t new_price; uint32_t new_shares;
     };
 
-    // A small deterministic sequence
+    // A small deterministic sequence (prices within the LOB's
+    // [BASE_PRICE, BASE_PRICE + (MAX_PRICE_LEVELS-1)*TICK_SIZE] window)
     TestMsg msgs[] = {
-        {'A', 'B', 100, 300, 1800000, 0, 0, 0},  // add bid $180.00
-        {'A', 'S', 101, 200, 1820000, 0, 0, 0},  // add ask $182.00
-        {'A', 'B', 102, 150, 1790000, 0, 0, 0},  // add bid $179.00
-        {'A', 'S', 103, 250, 1830000, 0, 0, 0},  // add ask $183.00
+        {'A', 'B', 100, 300, 1751000, 0, 0, 0},  // add bid $175.10
+        {'A', 'S', 101, 200, 1753000, 0, 0, 0},  // add ask $175.30
+        {'A', 'B', 102, 150, 1750000, 0, 0, 0},  // add bid $175.00
+        {'A', 'S', 103, 250, 1756000, 0, 0, 0},  // add ask $175.60
         {'E',  0,  100,  50,       0, 0, 0, 0},  // exec 50 from bid 100
         {'X',  0,  101, 100,       0, 0, 0, 0},  // cancel 100 from ask 101
         {'D',  0,  102,   0,       0, 0, 0, 0},  // delete bid 102

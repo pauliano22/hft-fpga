@@ -45,8 +45,8 @@ jobs:
         working-directory: src/golden_model
         run: |
           make test
-          # Fail CI if any test did not pass
-          make test | grep -qE "[0-9]+ / [0-9]+ tests passed" || (echo "::error::Unit tests failed" && exit 1)
+          # Fail CI if any test did not pass (numerator must equal denominator)
+          make test | grep -qP '(\d+) / \1 tests passed' || (echo "::error::Unit tests failed" && exit 1)
 
       - name: Run benchmark (report throughput)
         working-directory: src/golden_model
@@ -94,15 +94,17 @@ jobs:
       - name: Run HLS C-simulation suite (expect 12/12 PASS)
         working-directory: src/hls
         run: |
-          make test 2>&1 | tee /tmp/hls_test_output.txt
+          make test > /tmp/hls_test_output.txt 2>&1 || true
           echo "--- HLS test output ---"
           cat /tmp/hls_test_output.txt
           # Check for passing count in output
           grep -E "[0-9]+\s*/\s*[0-9]+\s*tests?\s*passed" /tmp/hls_test_output.txt \
             >> $GITHUB_STEP_SUMMARY || true
           # Fail if any test reported FAIL
-          grep -i "FAIL" /tmp/hls_test_output.txt && \
-            (echo "::error::HLS C-sim tests failed" && exit 1) || true
+          if grep -qi "FAIL" /tmp/hls_test_output.txt; then
+            echo "::error::HLS C-sim tests failed"
+            exit 1
+          fi
 
   # ---------------------------------------------------------------------------
   # Job 3: Verilator RTL Simulation
