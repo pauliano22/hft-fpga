@@ -41,8 +41,12 @@ divisor: a price of `$10.25` is stored as `102500`.
 NASDAQ publishes historical ITCH 5.0 sample files (gzip-compressed) at:
 
 ```
-ftp://emi.nasdaq.com/ITCH/
+https://emi.nasdaq.com/ITCH/Nasdaq%20ITCH/
 ```
+
+(NASDAQ's legacy `ftp://emi.nasdaq.com/ITCH/` mirror still serves the same
+files over plain FTP, but it's increasingly blocked by browsers, proxies,
+and corporate networks — prefer the HTTPS mirror above.)
 
 Files are named `YYYYMMDD.NASDAQ_ITCH50.gz`. A full trading-day file is
 typically 5–12 GB uncompressed.

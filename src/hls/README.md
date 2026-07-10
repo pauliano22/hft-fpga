@@ -4,7 +4,7 @@ Three Vitis HLS C++ modules that form the hardware "brain" of the engine:
 
 | Module | Top Function | II Target | Role |
 |---|---|---|---|
-| `matching_engine/lob.cpp` | `process_messages` | 1 | Maintains bid/ask book, emits best bid/ask |
+| `matching_engine/lob.cpp` | `process_messages` | 3 | Maintains bid/ask book, emits best bid/ask |
 | `moe_router/moe_router.cpp` | `route_message` | 1 | Extracts features, selects top-2 experts |
 | `experts/expert_kernel.cpp` | `combine_experts` | 1 | Runs 2-layer MLP inference, outputs trade signal |
 

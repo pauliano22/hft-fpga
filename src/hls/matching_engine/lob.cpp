@@ -284,10 +284,9 @@ void process_messages(
 MAIN_LOOP:
     for (int i = 0; i < n_messages; ++i) {
         // ------------------------------------------------------------------
-        // PIPELINE II=1 — this pragma tells the synthesizer to try to
-        // start a new loop iteration every clock cycle. With ARRAY_PARTITION
-        // above, there are no memory bottlenecks preventing II=1.
-        // Result: 250 million messages/second at 250 MHz clock.
+        // PIPELINE II=3 — this pragma tells the synthesizer to start a new
+        // loop iteration every 3 clock cycles.
+        // Result: 83.3 million messages/second at 250 MHz clock.
         // ------------------------------------------------------------------
 #pragma HLS PIPELINE II=3
 
