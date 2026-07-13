@@ -41,13 +41,13 @@ Read "The Big Picture", "Why FPGA?", and "Data Flow" sections. This gives you th
 
 This is the "dictionary" of the project. Before reading any hardware code, understand the types defined here:
 
-1. **AXI-Stream signals** (lines 18-24): How data moves between stages. Focus on `tdata` (the data), `tvalid` (data is ready), `tlast` (end of packet).
+1. **AXI-Stream signals** (`axis_master_t`, lines 46-53): How data moves between stages. Focus on `tdata` (the data), `tvalid` (data is ready), `tlast` (end of packet).
 
-2. **ITCH message types** (lines 29-39): The `0x41` = 'A' = Add Order code. The parser looks for this byte to identify messages.
+2. **ITCH message types** (`itch_msg_type_t`, lines 64-74): The `8'h41` = 'A' = Add Order code. The parser looks for this byte to identify messages.
 
-3. **Parsed order struct** (lines 44-52): The parser's output — order reference, side (buy/sell), shares, stock symbol, price, timestamp.
+3. **Parsed order struct** (`parsed_add_order_t`, lines 87-95): The parser's output — order reference, side (buy/sell), shares, stock symbol, price, timestamp.
 
-4. **MoE types** (lines 57-76): Feature vector, trade signal. These define what the AI model sees and produces.
+4. **MoE types** (`moe_input_t` / `trade_signal_t`, lines 119-138): Feature vector, trade signal. These define what the AI model sees and produces.
 
 **New concept — `typedef struct packed`**: In SystemVerilog, `packed` means the struct is stored as contiguous bits, like a C struct with no padding. This matters because in hardware, we need to know exactly which wire carries which bit.
 
@@ -132,7 +132,7 @@ The code is compact. Notice how `#pragma HLS UNROLL` on the inner loops means al
 
 This implements the Limit Order Book (LOB) — the data structure that tracks all buy and sell orders.
 
-**Key insight**: Price is used as a direct BRAM address. `lob.bid_levels[1500]` holds the quantity at price level 1500. No searching needed — O(1) access.
+**Key insight**: Price is used as a direct BRAM address. `bid_shares[price_to_idx(price)]` holds the quantity at that price level (index 0 = `BASE_PRICE`, up to `MAX_PRICE_LEVELS - 1`). No searching needed — O(1) access.
 
 Follow the logic for a buy order:
 1. Does the buy price ≥ best ask? (Does it "cross" the spread?)
@@ -147,17 +147,16 @@ Reinforces the LOB concepts with diagrams.
 
 ## Phase 7: The Golden Model (30 min)
 
-### Read: `src/golden_model/main.cpp`
+### Read: `src/golden_model/itch_parser.{hpp,cpp}`, `order_book.{hpp,cpp}`, then `main.cpp`
 
-This is the most readable file — pure C++ with no hardware concepts. It implements the **exact same algorithm** as the hardware, but using standard C++ data structures.
+This is the most readable code in the repo — pure C++ with no hardware concepts. It implements the **exact same ITCH-parsing and order-book algorithm** as the hardware (`src/rtl/itch_parser.sv` and `src/hls/matching_engine/lob.cpp`), but using standard C++ data structures. (MoE router/expert parity is covered separately by the HLS C-simulation testbenches from Phase 4-5 — the golden model here only covers parsing + book state, matching the "Golden Model Units" row in the README's Verification Strategy table.)
 
 Read it in order:
-1. **FixedPoint class** (lines 28-57): Emulates hardware fixed-point using `int16_t`
-2. **ITCH parser** (lines 62-131): Parses binary ITCH messages byte-by-byte
-3. **Feature extractor** (lines 149-181): Converts order + book state → 8 features
-4. **MoE model** (lines 186-304): Router + experts + weighted combination
-5. **Order book** (lines 310-371): LOB using `std::map`
-6. **Main function** (lines 376-478): Drives the full pipeline with synthetic orders
+1. **`itch_parser.hpp`**: The per-message-type structs (`AddOrderMsg`, `OrderExecutedMsg`, ...) and the `ITCHParser` class, which dispatches parsed messages via callbacks (`set_on_add_order`, etc.)
+2. **`itch_parser.cpp`**: `parse_file()` / `parse_message()` read the length-prefixed binary stream and dispatch to per-type `dispatch_*()` functions that decode fields byte-by-byte
+3. **`order_book.hpp`**: The `OrderBook` class — bids/asks are kept in `std::map<price, PriceLevel>` (descending for bids, ascending for asks), giving O(log n) best-bid/ask instead of hardware's O(1) array lookup
+4. **`order_book.cpp`**: `add()`, `execute()`, `cancel()`, `remove()`, `replace()` mutate the book; `best_bid()`/`best_ask()`/`top_of_book()` read it back
+5. **`main.cpp`**: The CLI driver — wires `ITCHParser` callbacks to `OrderBook` mutators, times the run, and prints benchmark/book-state output
 
 **Exercise**: Run `make run_golden` and compare the console output to the code. Trace order #4 (a crossing buy) through all stages.
 

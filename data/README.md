@@ -53,7 +53,7 @@ typically 5–12 GB uncompressed.
 
 To download and decompress:
 ```bash
-wget ftp://emi.nasdaq.com/ITCH/01302019.NASDAQ_ITCH50.gz
+wget "https://emi.nasdaq.com/ITCH/Nasdaq%20ITCH/01302019.NASDAQ_ITCH50.gz"
 gunzip 01302019.NASDAQ_ITCH50.gz
 ```
 

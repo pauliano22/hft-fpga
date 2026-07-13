@@ -281,21 +281,17 @@ This gives O(1) price-level access — no searching needed. The FPGA's Block RAM
 
 ## The Golden Model
 
-**File**: `src/golden_model/main.cpp`
+**Files**: `src/golden_model/itch_parser.{hpp,cpp}`, `order_book.{hpp,cpp}`, `main.cpp`
 
-The golden model is a **pure C++ implementation** of the entire pipeline. It exists for one reason: to provide ground truth for verification.
+The golden model is a **pure C++ implementation** of ITCH parsing and order-book maintenance. It exists for one reason: to provide ground truth for verification of those two stages (see the "Golden Model Units" row in the Verification Strategy table below). MoE router/expert parity is verified separately, via the HLS C-simulation testbenches under `src/hls/`.
 
-### Components (all in one file for simplicity)
+### Components
 
-1. **FixedPoint class**: Emulates `ap_fixed<16,8>` arithmetic using `int16_t`. This ensures the C++ model uses the same fixed-point math as the HLS hardware.
+1. **`ITCHParser` class** (`itch_parser.hpp`/`.cpp`): Parses raw ITCH byte buffers, matching the RTL parser byte-for-byte, and dispatches parsed messages via callbacks.
 
-2. **ITCHParser class**: Parses raw ITCH byte buffers, matching the RTL parser byte-for-byte.
+2. **`OrderBook` class** (`order_book.hpp`/`.cpp`): Software LOB using `std::map` (red-black tree) — a different data structure than the hardware's BRAM-addressed arrays, but one that produces identical matching results.
 
-3. **FeatureExtractor class**: Converts raw order data into the 8-feature vector that feeds the MoE.
-
-4. **MoEModel class**: Full MoE inference — router scoring, top-K selection, softmax, expert MLPs, weighted combination, and final decision.
-
-5. **OrderBook class**: Software LOB using `std::map` (red-black tree) — different data structure than the hardware, but produces identical matching results.
+3. **`main.cpp`**: CLI driver that wires the parser's callbacks to the order book's mutators and reports benchmark/book-state output.
 
 ### Why "Golden"?
 
