@@ -97,7 +97,7 @@ Focus on the data structures:
 - `ExpertInput`: What gets sent to each expert
 - `TradeSignal`: The final output (Buy/Sell/Hold + confidence)
 
-**New concept — `ap_fixed<16,8>`**: Xilinx's fixed-point type. 16 total bits, 8 integer bits, 8 fractional bits. Range: -128 to +127.996. Resolution: ~0.004. See ARCHITECTURE.md Section 10 for details.
+**New concept — `ap_fixed<16,6>`**: Xilinx's fixed-point type. 16 total bits, 6 integer bits, 10 fractional bits. Range: -32 to +31.999. Resolution: ~0.001. See ARCHITECTURE.md Section 10 for details.
 
 ### Read: `src/hls/moe_router/moe_router.cpp`
 

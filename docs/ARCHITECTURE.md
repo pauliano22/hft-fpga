@@ -355,24 +355,24 @@ Floating-point (`float`, `double`) on FPGAs is:
 
 ### How Fixed-Point Works
 
-`ap_fixed<16, 8>` means:
+The project uses `ap_fixed<16, 6>` (see `src/hls/moe_router/moe_router.hpp`), which means:
 - 16 total bits
-- 8 integer bits (range: -128 to +127)
-- 8 fractional bits (resolution: 1/256 ≈ 0.004)
+- 6 integer bits (range: -32 to +31)
+- 10 fractional bits (resolution: 1/1024 ≈ 0.001)
 
 ```
-Bit layout:  [S IIIIIII . FFFFFFFF]
-              │ │       │ │
-              │ │       │ └── 8 fractional bits
-              │ │       └──── decimal point (implied)
-              │ └──────────── 7 integer bits
+Bit layout:  [S IIIII . FFFFFFFFFF]
+              │ │     │ │
+              │ │     │ └── 10 fractional bits
+              │ │     └──── decimal point (implied)
+              │ └──────────── 5 integer bits
               └────────────── 1 sign bit
 
 Example: 3.75 in decimal
   = 3 + 0.5 + 0.25
-  = 00000011.11000000 in binary
-  = raw value: 0x03C0 = 960
-  Verify: 960 / 256 = 3.75 ✓
+  = 000011.1100000000 in binary
+  = raw value: 0x0F00 = 3840
+  Verify: 3840 / 1024 = 3.75 ✓
 ```
 
 ### Multiplication
