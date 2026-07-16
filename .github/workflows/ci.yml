@@ -94,15 +94,13 @@ jobs:
       - name: Run HLS C-simulation suite (expect 12/12 PASS)
         working-directory: src/hls
         run: |
+          set -o pipefail
           make test 2>&1 | tee /tmp/hls_test_output.txt
           echo "--- HLS test output ---"
           cat /tmp/hls_test_output.txt
           # Check for passing count in output
           grep -E "[0-9]+\s*/\s*[0-9]+\s*tests?\s*passed" /tmp/hls_test_output.txt \
             >> $GITHUB_STEP_SUMMARY || true
-          # Fail if any test reported FAIL
-          grep -i "FAIL" /tmp/hls_test_output.txt && \
-            (echo "::error::HLS C-sim tests failed" && exit 1) || true
 
   # ---------------------------------------------------------------------------
   # Job 3: Verilator RTL Simulation
