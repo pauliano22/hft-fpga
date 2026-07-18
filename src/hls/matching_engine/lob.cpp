@@ -56,22 +56,27 @@ BookUpdate process_one(
     // ------------------------------------------------------------------
     if (msg.msg_type == MSG_ADD || msg.msg_type == MSG_ADD_F) {
         // ---- Add Order ----
-        // Update price-level share count for the appropriate side
-        if (msg.side == 0) {  // bid
-            bid_shares[price_idx] += msg.shares;
-        } else {              // ask
-            ask_shares[price_idx] += msg.shares;
+        // Out-of-window prices are dropped: the flat book only covers
+        // [BASE_PRICE, BASE_PRICE + MAX_PRICE_LEVELS ticks). A production
+        // design would re-center the window or fall back to a wide book.
+        if (price_idx < MAX_PRICE_LEVELS) {
+            // Update price-level share count for the appropriate side
+            if (msg.side == 0) {  // bid
+                bid_shares[price_idx] += msg.shares;
+            } else {              // ask
+                ask_shares[price_idx] += msg.shares;
+            }
+            // Record order in lookup table (using hash of ref number)
+            order_ref_table[order_idx]    = msg.order_ref;
+            order_side_table[order_idx]   = msg.side;
+            order_price_table[order_idx]  = msg.price;
+            order_shares_table[order_idx] = msg.shares;
         }
-        // Record order in lookup table (using hash of ref number)
-        order_ref_table[order_idx]    = msg.order_ref;
-        order_side_table[order_idx]   = msg.side;
-        order_price_table[order_idx]  = msg.price;
-        order_shares_table[order_idx] = msg.shares;
 
     } else if (msg.msg_type == MSG_DELETE) {
         // ---- Delete Order ---- remove entire remaining quantity
         // Only modify if stored ref matches (guard against hash collision)
-        if (order_ref_table[order_idx] == msg.order_ref) {
+        if (order_ref_table[order_idx] == msg.order_ref && stored_idx < MAX_PRICE_LEVELS) {
             if (stored_side == 0) {
                 // Subtract; guard against underflow (should not happen in clean data)
                 if (bid_shares[stored_idx] >= stored_shares)
@@ -91,7 +96,7 @@ BookUpdate process_one(
 
     } else if (msg.msg_type == MSG_EXECUTE) {
         // ---- Order Executed (partial or full) ----
-        if (order_ref_table[order_idx] == msg.order_ref) {
+        if (order_ref_table[order_idx] == msg.order_ref && stored_idx < MAX_PRICE_LEVELS) {
             ap_uint<32> exec_qty = (msg.shares <= stored_shares) ?
                                     msg.shares : stored_shares;
             if (stored_side == 0) {
@@ -116,7 +121,7 @@ BookUpdate process_one(
 
     } else if (msg.msg_type == MSG_CANCEL) {
         // ---- Order Cancel (partial) — remove msg.shares from the order ----
-        if (order_ref_table[order_idx] == msg.order_ref) {
+        if (order_ref_table[order_idx] == msg.order_ref && stored_idx < MAX_PRICE_LEVELS) {
             ap_uint<32> cancel_qty = (msg.shares <= stored_shares) ?
                                       msg.shares : stored_shares;
             if (stored_side == 0) {
@@ -137,7 +142,7 @@ BookUpdate process_one(
     } else if (msg.msg_type == MSG_REPLACE) {
         // ---- Order Replace: delete original, add replacement ----
         // Step 1: remove original order
-        if (order_ref_table[order_idx] == msg.order_ref) {
+        if (order_ref_table[order_idx] == msg.order_ref && stored_idx < MAX_PRICE_LEVELS) {
             if (stored_side == 0) {
                 if (bid_shares[stored_idx] >= stored_shares)
                     bid_shares[stored_idx] -= stored_shares;
@@ -150,18 +155,21 @@ BookUpdate process_one(
                     ask_shares[stored_idx] = 0;
             }
         }
-        // Step 2: add replacement order at new price
+        // Step 2: add replacement order at new price (dropped if the new
+        // price falls outside the book window, same policy as Add)
         ap_uint<12> new_price_idx  = price_to_idx(msg.new_price);
         ap_uint<12> new_order_idx  = order_hash(msg.new_order_ref);
-        if (stored_side == 0) {
-            bid_shares[new_price_idx] += msg.new_shares;
-        } else {
-            ask_shares[new_price_idx] += msg.new_shares;
+        if (new_price_idx < MAX_PRICE_LEVELS) {
+            if (stored_side == 0) {
+                bid_shares[new_price_idx] += msg.new_shares;
+            } else {
+                ask_shares[new_price_idx] += msg.new_shares;
+            }
+            order_ref_table[new_order_idx]    = msg.new_order_ref;
+            order_side_table[new_order_idx]   = stored_side;
+            order_price_table[new_order_idx]  = msg.new_price;
+            order_shares_table[new_order_idx] = msg.new_shares;
         }
-        order_ref_table[new_order_idx]    = msg.new_order_ref;
-        order_side_table[new_order_idx]   = stored_side;
-        order_price_table[new_order_idx]  = msg.new_price;
-        order_shares_table[new_order_idx] = msg.new_shares;
     }
 
     // ------------------------------------------------------------------

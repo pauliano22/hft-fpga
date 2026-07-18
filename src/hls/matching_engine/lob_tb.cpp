@@ -72,17 +72,17 @@ static BookUpdate send_msg(const OrderMsg& msg) {
 static bool test_add_bid_updates_best() {
     reset_book();
 
-    // Price: $182.50 = 1825000; within range [BASE=1750000, BASE+2047*100]
+    // Price: $175.30 = 1753000; within window [BASE=1750000, BASE+63*100]
     OrderMsg msg{};
     msg.msg_type  = MSG_ADD;
     msg.order_ref = 1ULL;
     msg.side      = 0;          // bid
     msg.shares    = 500;
-    msg.price     = 1825000;    // $182.50
+    msg.price     = 1753000;    // $175.30
 
     BookUpdate upd = send_msg(msg);
 
-    CHECK(upd.best_bid == 1825000, "best_bid should equal added price");
+    CHECK(upd.best_bid == 1753000, "best_bid should equal added price");
     CHECK(upd.best_ask == 0,       "ask side should be empty");
     CHECK(upd.spread   == 0,       "spread undefined when one side empty");
     return true;
@@ -94,22 +94,22 @@ static bool test_add_bid_updates_best() {
 static bool test_spread_and_mid() {
     reset_book();
 
-    // Bid at $182.40
+    // Bid at $175.20
     OrderMsg bid{};
     bid.msg_type = MSG_ADD; bid.order_ref = 10; bid.side = 0;
-    bid.shares = 200; bid.price = 1824000; // $182.40
+    bid.shares = 200; bid.price = 1752000; // $175.20
     send_msg(bid);
 
-    // Ask at $182.60
+    // Ask at $175.40
     OrderMsg ask{};
     ask.msg_type = MSG_ADD; ask.order_ref = 11; ask.side = 1;
-    ask.shares = 150; ask.price = 1826000; // $182.60
+    ask.shares = 150; ask.price = 1754000; // $175.40
     BookUpdate upd = send_msg(ask);
 
-    CHECK(upd.best_bid == 1824000, "best_bid mismatch");
-    CHECK(upd.best_ask == 1826000, "best_ask mismatch");
+    CHECK(upd.best_bid == 1752000, "best_bid mismatch");
+    CHECK(upd.best_ask == 1754000, "best_ask mismatch");
     CHECK(upd.spread   == 2000,    "spread should be $0.20 = 2000");
-    CHECK(upd.mid_price == 1825000, "mid should be $182.50");
+    CHECK(upd.mid_price == 1753000, "mid should be $175.30");
     return true;
 }
 
@@ -121,7 +121,7 @@ static bool test_delete_clears_best() {
 
     OrderMsg add{};
     add.msg_type = MSG_ADD; add.order_ref = 20; add.side = 0;
-    add.shares = 100; add.price = 1800000;
+    add.shares = 100; add.price = 1751000;
     send_msg(add);
 
     OrderMsg del{};
@@ -140,7 +140,7 @@ static bool test_partial_execute() {
 
     OrderMsg add{};
     add.msg_type = MSG_ADD; add.order_ref = 30; add.side = 1; // ask
-    add.shares = 400; add.price = 1810000;
+    add.shares = 400; add.price = 1755000;
     send_msg(add);
 
     // Execute 100 of the 400 shares
@@ -149,7 +149,7 @@ static bool test_partial_execute() {
     BookUpdate upd = send_msg(exec);
 
     // Ask should still exist (300 shares remaining)
-    CHECK(upd.best_ask == 1810000, "ask should still be present after partial execute");
+    CHECK(upd.best_ask == 1755000, "ask should still be present after partial execute");
     CHECK(upd.ask_total_qty == 300, "ask qty should be 300 after partial execute");
     return true;
 }
@@ -171,10 +171,10 @@ static bool test_vs_golden_model() {
 
     // A small deterministic sequence
     TestMsg msgs[] = {
-        {'A', 'B', 100, 300, 1800000, 0, 0, 0},  // add bid $180.00
-        {'A', 'S', 101, 200, 1820000, 0, 0, 0},  // add ask $182.00
-        {'A', 'B', 102, 150, 1790000, 0, 0, 0},  // add bid $179.00
-        {'A', 'S', 103, 250, 1830000, 0, 0, 0},  // add ask $183.00
+        {'A', 'B', 100, 300, 1752000, 0, 0, 0},  // add bid $175.20
+        {'A', 'S', 101, 200, 1754000, 0, 0, 0},  // add ask $175.40
+        {'A', 'B', 102, 150, 1751000, 0, 0, 0},  // add bid $175.10
+        {'A', 'S', 103, 250, 1756000, 0, 0, 0},  // add ask $175.60
         {'E',  0,  100,  50,       0, 0, 0, 0},  // exec 50 from bid 100
         {'X',  0,  101, 100,       0, 0, 0, 0},  // cancel 100 from ask 101
         {'D',  0,  102,   0,       0, 0, 0, 0},  // delete bid 102
@@ -238,6 +238,39 @@ static bool test_vs_golden_model() {
 }
 
 // =========================================================================
+// TEST 6: Out-of-window price → add is dropped, book state unaffected
+//
+// The flat book covers [BASE_PRICE, BASE_PRICE + 63 ticks]. Prices outside
+// that window must be ignored (production would re-center the window) —
+// and must never corrupt in-window state.
+// =========================================================================
+static bool test_out_of_window_ignored() {
+    reset_book();
+
+    // In-window bid at $175.20
+    OrderMsg in{};
+    in.msg_type = MSG_ADD; in.order_ref = 40; in.side = 0;
+    in.shares = 100; in.price = 1752000;
+    send_msg(in);
+
+    // Out-of-window bid at $182.50 — must be dropped
+    OrderMsg out_high{};
+    out_high.msg_type = MSG_ADD; out_high.order_ref = 41; out_high.side = 0;
+    out_high.shares = 999; out_high.price = 1825000;
+    BookUpdate upd = send_msg(out_high);
+    CHECK(upd.best_bid == 1752000, "out-of-window add must not change best_bid");
+
+    // Below-window bid at $170.00 — must also be dropped
+    OrderMsg out_low{};
+    out_low.msg_type = MSG_ADD; out_low.order_ref = 42; out_low.side = 0;
+    out_low.shares = 999; out_low.price = 1700000;
+    upd = send_msg(out_low);
+    CHECK(upd.best_bid == 1752000, "below-window add must not change best_bid");
+    CHECK(upd.best_ask == 0, "ask side must remain empty");
+    return true;
+}
+
+// =========================================================================
 // main
 // =========================================================================
 int main() {
@@ -247,6 +280,7 @@ int main() {
     run_test("Delete order → best_bid drops to 0",   test_delete_clears_best);
     run_test("Partial execute → shares reduced",      test_partial_execute);
     run_test("HLS LOB vs Golden Model comparison",    test_vs_golden_model);
+    run_test("Out-of-window price is safely dropped", test_out_of_window_ignored);
 
     printf("=== RESULTS: %d / %d tests passed ===\n", tests_passed, tests_run);
     return (tests_passed == tests_run) ? 0 : 1;
