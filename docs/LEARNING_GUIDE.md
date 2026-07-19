@@ -102,8 +102,8 @@ Focus on the data structures:
 ### Read: `src/hls/moe_router/moe_router.cpp`
 
 Follow the algorithm:
-1. Score each expert (matrix multiplication, lines 98-112)
-2. Find top-2 experts (comparator, function `top_k_select`)
+1. Score each expert (matrix multiplication, lines 95-104)
+2. Find top-2 experts (comparator, `TOP_K_SELECT` loop starting at line 115)
 3. Compute gating weights (piecewise linear sigmoid)
 4. Send features to the selected experts
 

@@ -82,7 +82,7 @@ make bench       # build + run throughput benchmark
 ```bash
 cd src/hls
 make        # compile all testbenches
-make test   # run all 12 tests
+make test   # run all 13 tests
 ```
 
 **Verilator RTL Simulation:**

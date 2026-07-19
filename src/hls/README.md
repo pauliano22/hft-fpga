@@ -28,7 +28,7 @@ which provides functional equivalents of `ap_uint`, `ap_fixed`, and
 - License: node-locked or floating
 
 ```bash
-source /opt/Xilinx/Vitis_HLS/2025.2/settings64.sh
+source /tools/Xilinx/Vitis_HLS/2025.2/settings64.sh
 cd src/hls
 ```
 
