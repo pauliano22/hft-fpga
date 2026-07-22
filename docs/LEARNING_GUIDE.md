@@ -94,8 +94,6 @@ Read about MoE and Expert MLPs. Understand:
 Focus on the data structures:
 - `FeatureVector`: 8 fixed-point numbers representing market state
 - `RouterOutput`: Which 2 experts were selected + their weights
-- `ExpertInput`: What gets sent to each expert
-- `TradeSignal`: The final output (Buy/Sell/Hold + confidence)
 
 **New concept — `ap_fixed<16,6>`**: Xilinx's fixed-point type. 16 total bits, 6 integer bits, 10 fractional bits. Range: -32 to +31.999. Resolution: ~0.001. See ARCHITECTURE.md Section 10 for details.
 
