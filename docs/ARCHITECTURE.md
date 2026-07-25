@@ -115,29 +115,16 @@ ITCH 5.0 is NASDAQ's native market data feed protocol. It's a binary protocol �
 The parser is a **Finite State Machine (FSM)** that processes one 64-bit AXI-Stream beat (8 bytes) per clock cycle:
 
 ```
-            ┌─────────┐  msg_type == 'A'  ┌─────────┐
-  ─────────→│  S_IDLE  │─────────────────→│ S_HEADER│
-            │ (byte 0) │                   │(bytes 8+)│
-            └─────┬────┘                   └────┬────┘
-                  │ msg_type != 'A'              │
-                  ▼                              ▼
-            ┌─────────┐                   ┌──────────┐
-            │ S_SKIP  │                   │S_ORDER_  │
-            │(to TLAST)│                   │  REF     │
-            └─────────┘                   └────┬─────┘
-                                               │
-                                               ▼
-                                        ┌──────────┐
-                                        │ S_STOCK  │
-                                        └────┬─────┘
-                                               │
-                                               ▼
-                                        ┌──────────┐
-                                        │ S_PRICE  │──→ order_out.valid = 1
-                                        └──────────┘
+            ┌────────┐  supported msg_type   ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐
+  ─────────→│  IDLE  │─────────────────────→│ PARSE_B1 │─→│ PARSE_B2 │─→│ PARSE_B3 │─→│ PARSE_B4 │─→│   EMIT   │─┐
+            │(beat 0)│                       │ (beat 1) │  │ (beat 2) │  │ (beat 3) │  │ (beat 4) │  │(1 cycle) │ │
+            └───┬────┘                       └──────────┘  └──────────┘  └──────────┘  └──────────┘  └──────────┘ │
+                │ unsupported msg_type                                                                             │
+                └─────────────────────────────────────────────────────────────────────────────────────────────────┘
+                  (loops back to IDLE; beat 0 already consumed)                              order_out.valid = 1 in EMIT
 ```
 
-**Key insight**: The parser never buffers an entire message. It extracts bytes *as they arrive* using the `get_byte()` function, which indexes into the current 64-bit beat. This means parsing takes exactly 5 clock cycles (5 beats × 8 bytes = 40 bytes ≥ 36 byte message).
+**Key insight**: The parser never buffers an entire message. It extracts bytes *as they arrive* using the `` `BYTE(...) `` macro, which indexes into the current 64-bit beat via a bit-slice. This means parsing takes exactly 5 clock cycles (beats 0–4) for the 36-byte Add message, plus 1 cycle to assert `EMIT`.
 
 ### ITCH Add Order Message Layout
 
@@ -404,7 +391,7 @@ tkeep       Which bytes are valid           Which of the 8 bytes matter
 
 **Handshake rule**: Data transfers only when `tvalid && tready` are both high on the same clock edge. This creates **backpressure** — if the receiver isn't ready, the sender waits.
 
-In our design, `tready` is always 1 (no backpressure) because the parser must keep up with line rate. Dropping packets in trading would be catastrophic.
+In our design, `tready` is high whenever the parser is not in its `EMIT` state (and reset is deasserted) — it deasserts for one cycle per parsed message while the output is presented, then reasserts. The parser must otherwise keep up with line rate; dropping packets in trading would be catastrophic.
 
 ---
 
@@ -420,7 +407,7 @@ The MoE softmax uses `sigmoid(x) ≈ 0.5 + 0.25x` for |x| < 2. This avoids both 
 With K=2, only 2 of 4 experts run per input. This means the compute cost scales with K, not N — critical for meeting the sub-microsecond budget. The two experts run in parallel on separate hardware.
 
 ### 4. BRAM-addressed LOB
-Using price-as-address gives O(1) access but limits the price range to MAX_PRICE_LEVELS ticks. For a real instrument, this covers ~$40 at $0.01 tick size — sufficient for most liquid stocks.
+Using price-as-address gives O(1) access but limits the price range to MAX_PRICE_LEVELS ticks. With `MAX_PRICE_LEVELS=64` and a $0.01 tick size, the flat book covers a $0.63 window (e.g. $175.00–$175.63) — a production design would re-center this window around the current best bid/ask rather than use one fixed range.
 
 ### 5. Separate golden model (not just HLS csim)
 The golden model is a standalone C++ program, not an HLS cosimulation. This means it can run without Xilinx tools, making CI/CD possible on standard GitHub Actions runners.

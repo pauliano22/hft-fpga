@@ -106,12 +106,12 @@ package axi_stream_pkg;
     //   Feature 4: Price distance from best
     //   Features 5-7: Reserved for rolling statistics
     //
-    // FEATURE_WIDTH = 16 bits matches ap_fixed<16,8> in HLS:
-    //   8 integer bits + 8 fractional bits
-    //   Range: -128.0 to +127.996
-    //   Resolution: 1/256 ≈ 0.004
+    // FEATURE_WIDTH = 16 bits matches ap_fixed<16,6> in HLS:
+    //   6 integer bits + 10 fractional bits
+    //   Range: -32.0 to +31.999
+    //   Resolution: 1/1024 ≈ 0.001
     parameter int NUM_FEATURES = 8;
-    parameter int FEATURE_WIDTH = 16;  // ap_fixed<16,8> equivalent
+    parameter int FEATURE_WIDTH = 16;  // ap_fixed<16,6> equivalent
 
     // signed = two's complement, allowing negative values
     typedef logic signed [FEATURE_WIDTH-1:0] feature_t;
