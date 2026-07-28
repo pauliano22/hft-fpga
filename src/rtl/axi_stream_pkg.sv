@@ -3,15 +3,22 @@
 // =============================================================================
 //
 // WHAT THIS FILE DOES:
-//   Defines all the data types and constants used throughout the hardware
-//   design. Think of it as a "dictionary" — every other file imports this
-//   to know what the data looks like.
+//   Defines reference data types and constants for the AXI-Stream/ITCH/MoE
+//   concepts used throughout the hardware design — a "dictionary" for
+//   understanding the field layouts before reading the real RTL.
+//
+// NOTE ON USAGE:
+//   itch_parser.sv, order_book.sv, and top.sv currently use plain `logic`
+//   ports (not these packed structs) for tool compatibility, so no module
+//   actually does `import axi_stream_pkg::*` today. Field widths here are
+//   kept in sync with the real ports where they overlap (see itch_parser.sv
+//   for the authoritative port list); this file exists as a conceptual
+//   reference and for future integration.
 //
 // WHY A PACKAGE?
 //   In SystemVerilog, a "package" is like a C++ header file — it lets
 //   multiple modules share the same type definitions without duplicating
-//   code. Any module that says `import axi_stream_pkg::*` gets access
-//   to everything defined here.
+//   code, via `import axi_stream_pkg::*`.
 //
 // KEY CONCEPTS:
 //   - AXI-Stream: A standard protocol for moving data between FPGA blocks
@@ -74,11 +81,14 @@ package axi_stream_pkg;
     } itch_msg_type_t;
 
     // -------------------------------------------------------------------------
-    // Parsed ITCH Add Order — Output of the Parser
+    // Parsed ITCH Add Order — Conceptual Output of the Parser
     // -------------------------------------------------------------------------
-    // After the parser processes an ITCH Add Order message, it outputs this
-    // struct with all fields extracted and aligned. The `valid` flag is high
-    // for exactly one clock cycle when a new order is ready.
+    // Illustrates the fields an Add Order parser produces once fully parsed.
+    // The actual itch_parser.sv exposes these as individual m_axis_* ports
+    // rather than this packed struct (m_axis_stock_locate instead of a raw
+    // `stock` field, and no timestamp output — see itch_parser.sv for the
+    // exact port list). The `valid` flag is high for exactly one clock cycle
+    // when a new order is ready.
     //
     // "packed" means the bits are laid out contiguously with no padding:
     //   Total size = 1 + 64 + 1 + 32 + 64 + 32 + 48 = 242 bits
@@ -97,14 +107,12 @@ package axi_stream_pkg;
     // -------------------------------------------------------------------------
     // MoE Feature Vector — Input to the Router
     // -------------------------------------------------------------------------
-    // The MoE model takes 8 fixed-point features as input. These represent
-    // market microstructure signals extracted from the order flow:
-    //   Feature 0: Normalized price (relative to midpoint)
-    //   Feature 1: Side indicator (+1 buy, -1 sell)
-    //   Feature 2: Log quantity
-    //   Feature 3: Spread
-    //   Feature 4: Price distance from best
-    //   Features 5-7: Reserved for rolling statistics
+    // The MoE model takes 8 fixed-point features as input — market
+    // microstructure signals extracted from the order book state. The
+    // authoritative field list is `FeatureVector` in
+    // src/hls/moe_router/moe_router.hpp: mid_price_norm, spread_norm,
+    // order_imbalance, bid_qty_norm, ask_qty_norm, bid_ask_ratio,
+    // spread_to_mid, and price_velocity.
     //
     // FEATURE_WIDTH = 16 bits matches ap_fixed<16,6> in HLS:
     //   6 integer bits + 10 fractional bits

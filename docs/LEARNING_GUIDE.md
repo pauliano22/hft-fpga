@@ -39,15 +39,15 @@ Read "The Big Picture", "Why FPGA?", and "Data Flow" sections. This gives you th
 
 ### Read: `src/rtl/axi_stream_pkg.sv`
 
-This is the "dictionary" of the project. Before reading any hardware code, understand the types defined here:
+This is a conceptual "dictionary" for the project's types — note that it's a reference file only: `itch_parser.sv`/`order_book.sv`/`top.sv` use plain `logic` ports rather than importing these structs (see the file's own header comment). Still, understand the field layouts here before reading the real RTL:
 
-1. **AXI-Stream signals** (`axis_master_t`, lines 46-53): How data moves between stages. Focus on `tdata` (the data), `tvalid` (data is ready), `tlast` (end of packet).
+1. **AXI-Stream signals** (`axis_master_t`, lines 53-60): How data moves between stages. Focus on `tdata` (the data), `tvalid` (data is ready), `tlast` (end of packet).
 
-2. **ITCH message types** (`itch_msg_type_t`, lines 64-74): The `8'h41` = 'A' = Add Order code. The parser looks for this byte to identify messages.
+2. **ITCH message types** (`itch_msg_type_t`, lines 71-81): The `8'h41` = 'A' = Add Order code. The parser looks for this byte to identify messages.
 
-3. **Parsed order struct** (`parsed_add_order_t`, lines 87-95): The parser's output — order reference, side (buy/sell), shares, stock symbol, price, timestamp.
+3. **Parsed order struct** (`parsed_add_order_t`, lines 97-105): Illustrates the parser's output — order reference, side (buy/sell), shares, stock symbol, price, timestamp. The actual `itch_parser.sv` exposes these as individual `m_axis_*` ports instead (and doesn't forward a timestamp).
 
-4. **MoE types** (`moe_input_t` / `trade_signal_t`, lines 119-138): Feature vector, trade signal. These define what the AI model sees and produces.
+4. **MoE types** (`moe_input_t` / `trade_signal_t`, lines 127-146): Feature vector, trade signal. The real feature list used by the router is `FeatureVector` in `moe_router.hpp`, not the placeholder one implied here.
 
 **New concept — `typedef struct packed`**: In SystemVerilog, `packed` means the struct is stored as contiguous bits, like a C struct with no padding. This matters because in hardware, we need to know exactly which wire carries which bit.
 
