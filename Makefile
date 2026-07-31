@@ -43,8 +43,8 @@ $(SIM_DIR):
 # ==============================================================================
 golden_model: $(BUILD_DIR)/golden_model
 
-$(BUILD_DIR)/golden_model: $(GOLDEN_DIR)/main.cpp | $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) -o $@ $< -lm
+$(BUILD_DIR)/golden_model: $(GOLDEN_DIR)/main.cpp $(GOLDEN_DIR)/itch_parser.cpp $(GOLDEN_DIR)/order_book.cpp | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -o $@ $^ -lm
 	@echo "Golden model built: $@"
 
 run_golden: $(BUILD_DIR)/golden_model
