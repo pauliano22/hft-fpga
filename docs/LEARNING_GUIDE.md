@@ -63,7 +63,7 @@ This is the most important file. Read it top-to-bottom:
 
 2. **Module ports** (lines 32-54): Inputs from the network (`s_axis_*`), outputs to the next stage (`m_axis_*`), and the stock/order/side/shares/price fields the order book consumes.
 
-3. **FSM states** (lines 59-67): Six states — IDLE, PARSE_B0, PARSE_B1, PARSE_B2, PARSE_B3, PARSE_B4, EMIT — one state per 8-byte AXI-Stream beat, plus IDLE and a one-cycle EMIT. Draw a state diagram on paper.
+3. **FSM states** (lines 59-67): Seven states — IDLE, PARSE_B0, PARSE_B1, PARSE_B2, PARSE_B3, PARSE_B4, EMIT — one state per 8-byte AXI-Stream beat, plus IDLE and a one-cycle EMIT. Draw a state diagram on paper.
 
 4. **Byte extraction** (line 92): **Critical** — there's no separate `get_byte()` function; a `` `BYTE(beat_data, offset) `` macro extracts byte N within a beat via `beat_data[(offset*8) +: 8]`. TDATA[7:0] holds byte 0 (the first byte to arrive on the wire), so no big-endian/little-endian inversion is needed.
 
