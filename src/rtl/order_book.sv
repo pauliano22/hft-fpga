@@ -110,7 +110,7 @@ always_ff @(posedge clk) begin
                     end
                     // Record latency: cycles from when we started processing
                     // to when both sides are valid
-                    if (r_best_bid != 32'h0 || r_best_ask != 32'h0)
+                    if (r_best_bid != 32'h0 && r_best_ask != 32'h0)
                         r_latency <= r_cycle_cnt;
                 end
 
