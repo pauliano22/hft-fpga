@@ -98,7 +98,7 @@ For context, 100 nanoseconds is the time it takes light to travel 30 meters. A C
 
 7. **Clock 9**: The matching engine checks the Limit Order Book and produces a trade signal.
 
-**Total: ~10 clock cycles at 250MHz = 40 nanoseconds.** (Actual latency depends on synthesis results.)
+**Total (simplified walkthrough): ~10 clock cycles at 250MHz = 40 nanoseconds.** This is a conceptual, one-cycle-per-stage illustration and does not model realistic per-module cycle counts (e.g. a multi-beat LOB update or a multi-cycle MoE routing pass). The actual synthesized pipeline takes 111 cycles (444 ns) end-to-end at 250MHz — see the [Latency Budget](#latency-budget) below for the verified, per-module breakdown.
 
 ---
 
@@ -344,7 +344,7 @@ Floating-point (`float`, `double`) on FPGAs is:
 
 The project uses `ap_fixed<16, 6>` (see `src/hls/moe_router/moe_router.hpp`), which means:
 - 16 total bits
-- 6 integer bits (range: -32 to +31)
+- 6 integer bits (range: -32 to +31.999)
 - 10 fractional bits (resolution: 1/1024 ≈ 0.001)
 
 ```
@@ -418,20 +418,20 @@ The golden model is a standalone C++ program, not an HLS cosimulation. This mean
 
 ### Latency Budget
 
+Verified, synthesis-measured cycle counts (250MHz clock, 4 ns/cycle) — see `src/hls/generate_hft_plots.py`:
+
 | Stage | Cycles | Time @ 250MHz |
 |-------|--------|---------------|
-| ITCH Parser (5 beats) | 5 | 20 ns |
-| MoE Router | 1 | 4 ns |
-| Expert MLPs (2 parallel) | 1 | 4 ns |
-| Weighted combination | 1 | 4 ns |
-| Matching Engine | 1 | 4 ns |
-| **Total pipeline** | **~10** | **~40 ns** |
+| LOB Update | 42 | 168 ns |
+| MoE Routing | 65 | 260 ns |
+| Expert Inference | 4 | 16 ns |
+| **Total pipeline** | **111** | **444 ns** |
+
+This matches the headline "444 nanoseconds" figure in the [README](../README.md). The simplified clock-by-clock walkthrough above illustrates the conceptual pipeline stages, not this verified breakdown.
 
 ### Throughput
 
-At II=1 (initiation interval of 1 clock cycle), the pipeline can accept a new input every clock cycle once full. At 250MHz:
-- **Sustained throughput**: 250M operations/sec per stage
-- **Message throughput**: 250M/5 = 50M messages/sec (limited by 5-beat parser)
+At II=1 (initiation interval of 1 clock cycle), the pipeline can accept a new input every clock cycle once full. The synthesized design sustains **83.3 million messages/sec** (see README) — throughput is decoupled from the 111-cycle pipeline latency once the pipeline is full.
 
 ### Resource Estimates (approximate)
 

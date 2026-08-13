@@ -60,6 +60,8 @@ build/
 data/*.itch
 data/*.bin
 data/*.pcap
+data/synthetic_orders.csv
+data/test_orders.csv
 
 # -----------------------------------------------------------------------
 # OS-specific files
