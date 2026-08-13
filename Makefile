@@ -16,6 +16,8 @@ GOLDEN_DIR  = $(SRC_DIR)/golden_model
 TB_DIR      = $(SRC_DIR)/tb
 SIM_DIR     = sim/verilator
 BUILD_DIR   = build
+DATA_DIR    = data
+SAMPLE      = $(DATA_DIR)/sample.itch
 
 # Tools
 CXX         = g++
@@ -43,13 +45,18 @@ $(SIM_DIR):
 # ==============================================================================
 golden_model: $(BUILD_DIR)/golden_model
 
-$(BUILD_DIR)/golden_model: $(GOLDEN_DIR)/main.cpp | $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) -o $@ $< -lm
+GOLDEN_SRCS := $(GOLDEN_DIR)/itch_parser.cpp $(GOLDEN_DIR)/order_book.cpp $(GOLDEN_DIR)/main.cpp
+
+$(BUILD_DIR)/golden_model: $(GOLDEN_SRCS) | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -o $@ $(GOLDEN_SRCS) -lm
 	@echo "Golden model built: $@"
 
-run_golden: $(BUILD_DIR)/golden_model
+$(SAMPLE):
+	$(MAKE) -C $(GOLDEN_DIR) test-data
+
+run_golden: $(BUILD_DIR)/golden_model $(SAMPLE)
 	@echo "=== Running Golden Model ==="
-	cd $(BUILD_DIR) && ./golden_model
+	cd $(BUILD_DIR) && ./golden_model --file $(CURDIR)/$(SAMPLE) --bench --top 10
 
 # ==============================================================================
 # Verilator Simulation (requires verilator installed)
@@ -105,7 +112,8 @@ waves: verilator_run
 # Clean
 # ==============================================================================
 clean:
-	rm -rf $(BUILD_DIR) $(SIM_DIR)
+	rm -rf $(BUILD_DIR)
+	$(MAKE) -C $(SIM_DIR) clean
 	@echo "Cleaned."
 
 # ==============================================================================
