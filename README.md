@@ -87,6 +87,7 @@ make test   # run all 13 tests
 
 **Verilator RTL Simulation:**
 ```bash
+cd src/golden_model && make test-data && cd ../..   # generate data/sample.itch, if not already done above
 cd sim/verilator
 make
 ./obj_dir/Vtop --file ../../data/sample.itch --no-vcd --limit 50000
