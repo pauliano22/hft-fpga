@@ -61,7 +61,7 @@ We utilize a "Golden Model" approach to ensure 100% numerical parity between har
 
 | Test Suite | Coverage | Tooling |
 | :--- | :--- | :--- |
-| **Golden Model Units** | ITCH Parsing Logic | C++ / GTest |
+| **Golden Model Units** | ITCH Parsing Logic | C++ (custom PASS/FAIL harness) |
 | **HLS C-Simulation** | MoE Mathematical Parity | Vitis HLS |
 | **RTL Simulation** | Cycle-Accurate Timing | Verilator |
 | **Full Synthesis** | Physical Timing & Area | Vivado / Vitis |
