@@ -156,7 +156,7 @@ Read it in order:
 4. **`order_book.cpp`**: `add()`, `execute()`, `cancel()`, `remove()`, `replace()` mutate the book; `best_bid()`/`best_ask()`/`top_of_book()` read it back
 5. **`main.cpp`**: The CLI driver — wires `ITCHParser` callbacks to `OrderBook` mutators, times the run, and prints benchmark/book-state output
 
-**Exercise**: Run `make run_golden` and compare the console output to the code. Trace order #4 (a crossing buy) through all stages.
+**Exercise**: `cd src/golden_model && make run` and compare the console output to the code. Trace order #4 (a crossing buy) through all stages.
 
 ---
 
@@ -178,15 +178,12 @@ Key parts:
 
 ## Phase 9: The Build System and CI (10 min)
 
-### Read: `Makefile`
+### Read: `src/golden_model/Makefile`, `src/hls/Makefile`, `sim/verilator/Makefile`
 
-Understand the available targets:
-- `make golden_model` → compile C++ golden model
-- `make run_golden` → run it (prints parsed messages and order-book state to stdout)
-- `make verilator_build` → compile RTL into C++ simulator
-- `make verilator_run` → run the simulator, generates waveform
-- `make verify` → run both and compare
-- `make validate` → Valgrind memory check
+There's no single root-level Makefile — each component builds independently:
+- `cd src/golden_model && make` → compile C++ golden model; `make test` runs unit tests, `make bench`/`make run` run it against sample data, `make valgrind` runs the memory check
+- `cd src/hls && make` → compile HLS C-simulation testbenches; `make test` runs all 13 tests
+- `cd sim/verilator && make` → compile RTL into a C++ simulator; `make run` simulates against sample data and produces a waveform, `make lint` runs RTL lint only
 
 ### Read: `.github/workflows/ci.yml`
 
@@ -222,7 +219,7 @@ After reading everything, try these to solidify your understanding:
 
 3. **Change the expert count**: In `moe_router.hpp`, change `N_EXPERTS` from 4 to 8 and see what changes would be needed.
 
-4. **Read the waveform**: If you have GTKWave, run `make waves` and identify the clock cycles where `order_out.valid` goes high.
+4. **Read the waveform**: If you have GTKWave, run `cd sim/verilator && make run && make waves` and identify the clock cycles where `order_out.valid` goes high.
 
 5. **Break it on purpose**: Change a byte offset in `itch_parser.sv` and see if the testbench catches the error.
 
