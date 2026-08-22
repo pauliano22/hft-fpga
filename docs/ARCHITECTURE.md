@@ -368,9 +368,9 @@ Fixed-point multiply: multiply the raw values, then shift right by FRAC_BITS.
 
 ```
   3.75 × 2.5
-  = 960 × 640 = 614400
-  614400 >> 8 = 2400
-  2400 / 256 = 9.375 ✓
+  = 3840 × 2560 = 9830400
+  9830400 >> 10 = 9600
+  9600 / 1024 = 9.375 ✓
 ```
 
 ---
