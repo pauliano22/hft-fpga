@@ -85,6 +85,14 @@ docs/*_synthesis.rpt
 docs/*_utilization.rpt
 
 # -----------------------------------------------------------------------
+# Weights exported by tools/train_moe.py (not wired into the current
+# hardware — moe_router.cpp/lob.cpp use their own hardcoded constants;
+# regenerate locally with `python3 tools/train_moe.py` if needed)
+# -----------------------------------------------------------------------
+src/golden_model/weights.h
+src/rtl/moe_weights.svh
+
+# -----------------------------------------------------------------------
 # Built binaries (golden model, test runner)
 # -----------------------------------------------------------------------
 src/golden_model/golden_model
