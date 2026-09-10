@@ -188,7 +188,7 @@ There is no single top-level build; each stage has its own `Makefile` (see the R
 ### Read: `.github/workflows/ci.yml`
 
 Three CI jobs:
-1. **golden-model**: build → run unit tests → benchmark → Valgrind check
+1. **golden-model**: build → run unit tests → benchmark → build ASAN/UBSan debug binary (Valgrind is available via `make valgrind` but not run in CI)
 2. **hls-csim**: compile the HLS modules with g++ → run the C-simulation testbenches
 3. **verilator**: install Verilator → build RTL sim → simulate → upload latency plots/CSV
 
