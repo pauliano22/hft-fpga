@@ -13,7 +13,7 @@
 //    Software uses std::map for dynamic insertion. Hardware uses flat arrays
 //    indexed by price: level_idx = (price - BASE_PRICE) / TICK_SIZE.
 //    With ARRAY_PARTITION, each element is a separate register → O(1) access
-//    with zero memory contention, enabling II=1 pipelining.
+//    with zero memory contention, enabling II=3 pipelining.
 //
 // 2. Order lookup via truncated reference
 //    ITCH order_ref is 64-bit. We use order_ref[11:0] (bottom 12 bits) as
@@ -129,9 +129,9 @@ inline ap_uint<12> order_hash(ap_uint<64> ref) {
 //   return (control) — start/stop/idle/ready signals
 //   n_messages       — number of messages to process in this invocation
 //
-// II=1 goal: with ARRAY_PARTITION on bid_shares/ask_shares and the order
-// tables, the synthesizer can achieve II=1 — processing one order per clock
-// cycle at 250 MHz = 250 million orders/second.
+// II=3 goal: with ARRAY_PARTITION on bid_shares/ask_shares and the order
+// tables, the synthesizer achieves II=3 — processing one order every 3 clock
+// cycles at 250 MHz = 83.3 million orders/second.
 // -------------------------------------------------------------------------
 void process_messages(
     hls::stream<OrderMsg>&    order_in,
