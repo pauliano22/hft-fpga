@@ -16,7 +16,7 @@
 // =========================================================================
 // process_one — process a single order message and update book state
 //
-// This is the innermost function that synthesis targets for II=1.
+// This is the innermost function that synthesis targets for II=3.
 // All array accesses must be to partitioned arrays (registered as FFs)
 // to avoid BRAM read-after-write latency that would force II>1.
 //
@@ -266,7 +266,7 @@ void process_messages(
     // ------------------------------------------------------------------
     // ARRAY_PARTITION complete — split each array element into its own
     // register. This eliminates all BRAM read-after-write latency and
-    // allows the synthesizer to achieve II=1 on the main loop.
+    // allows the synthesizer to achieve II=3 on the main loop.
     // Cost: 2 × 64 × 32 bits = 512 bytes of flip-flops.
     //
     // For larger books, use cyclic partitioning instead to interleave

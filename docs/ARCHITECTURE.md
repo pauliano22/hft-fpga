@@ -431,7 +431,7 @@ This matches the headline "444 nanoseconds" figure in the [README](../README.md)
 
 ### Throughput
 
-At II=1 (initiation interval of 1 clock cycle), the pipeline can accept a new input every clock cycle once full. The synthesized design sustains **83.3 million messages/sec** (see README) — throughput is decoupled from the 111-cycle pipeline latency once the pipeline is full.
+The MoE router and expert kernels pipeline at II=1, but the matching engine (LOB update) is the throughput bottleneck at II=3 — one order every 3 clock cycles (see `src/hls/README.md`). At a 250MHz clock, this yields the synthesized design's **83.3 million messages/sec** (see README) — throughput is decoupled from the 111-cycle pipeline latency once the pipeline is full.
 
 ### Resource Estimates (approximate)
 

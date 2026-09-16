@@ -49,7 +49,7 @@ vitis_hls -f run_synth.tcl
 
 Look for these values in the synthesis report:
 - **Latency (cycles)**: in the "Performance & Resource Estimates" section
-- **Initiation Interval**: target II=1 for the MAIN_LOOP / ROUTER_LOOP / EXPERT_LOOP
+- **Initiation Interval**: target II=3 for the MAIN_LOOP (lob.cpp); target II=1 for the ROUTER_LOOP / EXPERT_LOOP
 - **BRAM / DSP / FF / LUT**: in the "Utilization Estimates" section
 - **Timing**: "Target" vs "Estimated" clock period — must be ≤ 4.0 ns for 250 MHz
 
