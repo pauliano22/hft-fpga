@@ -323,7 +323,7 @@ In hardware verification, the "golden model" is the trusted reference. You run t
 
 ### Three Levels of Verification
 
-1. **Golden Model + Valgrind**: Proves the reference implementation is memory-safe (no leaks, no out-of-bounds access).
+1. **Golden Model + Sanitizers**: The CI debug build (`make debug`) compiles the golden model with AddressSanitizer + UndefinedBehaviorSanitizer to prove the reference implementation is memory-safe (no leaks, no out-of-bounds access). A stricter `make valgrind` target also exists but is run manually, not in CI (see [LEARNING_GUIDE.md](LEARNING_GUIDE.md)).
 
 2. **Verilator Simulation**: Compiles SystemVerilog into C++ and runs a cycle-accurate simulation. The testbench feeds ITCH packets and checks parser outputs.
 
