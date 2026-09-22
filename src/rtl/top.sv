@@ -162,7 +162,8 @@ assign latency_counter = r_latency_reg;
 //   HOLD otherwise
 //
 // Latency of this "MoE placeholder" = 1 cycle (combinatorial).
-// The real HLS MoE IP would add ~8 cycles per the synthesis report.
+// The real HLS MoE IP (MoE Routing + Expert Inference) adds 69 cycles
+// per the verified synthesis breakdown in docs/ARCHITECTURE.md.
 // -------------------------------------------------------------------------
 always_ff @(posedge clk) begin
     if (!rst_n) begin
