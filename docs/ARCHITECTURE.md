@@ -35,9 +35,9 @@ Market Data (ITCH) → Parse → AI Decision (MoE) → Execute (LOB) → Trade S
 1. **Parses** the bytes to understand "someone wants to buy 100 shares of AAPL at $150"
 2. **Runs AI** (a neural network called Mixture of Experts) to decide "should we trade?"
 3. **Checks the order book** to see if we can match against existing orders
-4. **Outputs a trade signal** — all in under 100 nanoseconds
+4. **Outputs a trade signal** — all in under 450 nanoseconds (444ns verified, see below)
 
-For context, 100 nanoseconds is the time it takes light to travel 30 meters. A CPU-based system would take 1-10 *micro*seconds — 10x to 100x slower.
+For context, 444 nanoseconds is the time it takes light to travel about 130 meters. A CPU-based system would take 1-10 *micro*seconds — 2x to 20x slower.
 
 ---
 
