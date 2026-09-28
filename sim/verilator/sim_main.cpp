@@ -274,7 +274,7 @@ int main(int argc, char** argv) {
         printf("    p99:  %.1f ns  (%.0f cycles)\n", p99,  p99  / CLK_PERIOD_NS);
         printf("    max:  %.1f ns  (%.0f cycles)\n", pmax, pmax / CLK_PERIOD_NS);
         printf("\n  NOTE: Latency includes only itch_parser + order_book.\n");
-        printf("        Add ~32 ns (8 cycles) for HLS MoE inference.\n");
+        printf("        Add 69 cycles (276 ns) for HLS MoE Routing + Expert Inference.\n");
     }
 
     // Write latency CSV for plotting

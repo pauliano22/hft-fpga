@@ -283,7 +283,7 @@ void process_messages(
 
     // Order tables are accessed one-at-a-time by hash — dual-port BRAM is
     // sufficient. No need for complete partitioning (which would consume
-    // 4 × 4096 × 32b ≈ 512 KB of flip-flops).
+    // 4 × 4096 × 32b ≈ 64 KB of flip-flops).
 #pragma HLS BIND_STORAGE variable=order_ref_table    type=ram_2p impl=bram
 #pragma HLS BIND_STORAGE variable=order_side_table   type=ram_2p impl=bram
 #pragma HLS BIND_STORAGE variable=order_price_table  type=ram_2p impl=bram
