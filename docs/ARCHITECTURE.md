@@ -186,7 +186,7 @@ Step 4: Dispatch
 #pragma HLS UNROLL             // Convert loop into parallel hardware
 #pragma HLS ARRAY_PARTITION    // Split array into separate BRAM banks
 #pragma HLS INTERFACE axis     // Use AXI-Stream protocol for I/O
-#pragma HLS INTERFACE bram     // Store this array in Block RAM
+#pragma HLS BIND_STORAGE variable=table impl=bram  // Store this array in Block RAM
 ```
 
 ---
