@@ -98,7 +98,7 @@ The LOB uses:
 
 This covers $175.00 to $175.63 (`MAX_PRICE_LEVELS` was reduced from 2048 to
 64 to keep the FIND_BEST_BID/FIND_BEST_ASK combinatorial unroll within what
-the Vitis scheduler can synthesize — see the matching_engine changelog).
+the Vitis scheduler can synthesize).
 For a different price center, change `BASE_PRICE` in `lob.hpp`. In
 production, `BASE_PRICE` would be a runtime
 configuration register written by the host CPU via AXI-Lite.
