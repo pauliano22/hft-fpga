@@ -73,13 +73,13 @@ state_t state, next_state;
 // Fields are big-endian in ITCH but accumulated MSB-first here
 // -------------------------------------------------------------------------
 logic [7:0]  r_msg_type;
-logic [15:0] r_msg_len;
 logic [15:0] r_stock_locate;
 logic [63:0] r_order_ref;
 logic        r_side;
 logic [31:0] r_shares;
 /* verilator lint_off UNUSED */
 logic [63:0] r_stock;       // 8-byte ticker (kept as raw bytes; not forwarded downstream)
+logic [15:0] r_msg_len;     // captured for visibility/debug; not used in FSM logic
 /* verilator lint_on UNUSED */
 logic [31:0] r_price;
 logic        r_valid;       // output valid flag
@@ -288,11 +288,9 @@ always_comb begin
 
         PARSE_B1: begin
             if (s_axis_tvalid && s_axis_tready) begin
-                // 'D' (Delete) is fully parsed after beat 2 (19 bytes = ceil(19/8)=3 beats)
-                if (r_msg_type == 8'h44 && r_msg_len <= 19)
-                    next_state = PARSE_B2;
-                else
-                    next_state = PARSE_B2; // all types continue to beat 2
+                // All message types continue to beat 2 (per-type completion is
+                // decided there, once the type-specific field ranges are known).
+                next_state = PARSE_B2;
             end
         end
 
