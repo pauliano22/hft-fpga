@@ -86,8 +86,11 @@ and 1 write port. The FIND_BEST_BID loop needs to read all 64 elements in
 one cycle → BRAM can only supply 1 per cycle → II = 64.
 
 With `complete` partitioning, every element becomes its own register (FF).
-All reads are parallel → II = 1. Cost: 2 × 64 × 32 = 4,096 FFs ≈ 0.3%
-of xcvu9p's 1.18M FFs — cheap even before accounting for the II win.
+All reads are parallel, so FIND_BEST_BID/FIND_BEST_ASK no longer bottleneck
+on BRAM ports. Cost: 2 × 64 × 32 = 4,096 FFs ≈ 0.3% of xcvu9p's 1.18M FFs —
+cheap even before accounting for the latency win. (This removes one II
+bottleneck; MAIN_LOOP's overall II is still 3, not 1 — see the table above —
+because of the order-ref/price/shares table read-modify-write dependencies.)
 
 ### Price range and tick size
 
