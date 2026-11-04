@@ -19,7 +19,7 @@ import sys
 # Configuration
 # =============================================================================
 NUM_FEATURES = 8
-NUM_EXPERTS = 8
+NUM_EXPERTS = 4
 TOP_K = 2
 HIDDEN_DIM = 16
 FRAC_BITS = 8
@@ -351,17 +351,17 @@ def export_svh(params, filepath):
         f.write("// MoE weights in ap_fixed<16,8> format (raw int16)\n")
         f.write(f"// Total parameters: {count_params()}\n\n")
 
-        # Router weights [8][8]
-        f.write("localparam logic signed [15:0] ROUTER_W [0:7][0:7] = '{\n")
+        # Router weights [NUM_EXPERTS][NUM_FEATURES]
+        f.write(f"localparam logic signed [15:0] ROUTER_W [0:{NUM_EXPERTS-1}][0:{NUM_FEATURES-1}] = '{{\n")
         for e in range(NUM_EXPERTS):
             vals = ", ".join(fmt_sv(params['router_w'][e, fi]) for fi in range(NUM_FEATURES))
             comma = "," if e < NUM_EXPERTS - 1 else ""
             f.write(f"    '{{{vals}}}{comma}\n")
         f.write("};\n\n")
 
-        # Router biases [8]
+        # Router biases [NUM_EXPERTS]
         vals = ", ".join(fmt_sv(params['router_b'][e]) for e in range(NUM_EXPERTS))
-        f.write(f"localparam logic signed [15:0] ROUTER_B [0:7] = '{{{vals}}};\n\n")
+        f.write(f"localparam logic signed [15:0] ROUTER_B [0:{NUM_EXPERTS-1}] = '{{{vals}}};\n\n")
 
         # Expert weights — separate arrays per expert
         for e in range(NUM_EXPERTS):
@@ -395,8 +395,8 @@ def export_weights_h(params, filepath):
         f.write("#pragma once\n")
         f.write("#include <cstdint>\n\n")
 
-        # Router weights [8][8]
-        f.write("constexpr int16_t TRAINED_ROUTER_W[8][8] = {\n")
+        # Router weights [NUM_EXPERTS][NUM_FEATURES]
+        f.write(f"constexpr int16_t TRAINED_ROUTER_W[{NUM_EXPERTS}][{NUM_FEATURES}] = {{\n")
         for e in range(NUM_EXPERTS):
             vals = ", ".join(str(quantize(params['router_w'][e, fi])) for fi in range(NUM_FEATURES))
             comma = "," if e < NUM_EXPERTS - 1 else ""
@@ -404,9 +404,9 @@ def export_weights_h(params, filepath):
         f.write("};\n\n")
 
         vals = ", ".join(str(quantize(params['router_b'][e])) for e in range(NUM_EXPERTS))
-        f.write(f"constexpr int16_t TRAINED_ROUTER_B[8] = {{{vals}}};\n\n")
+        f.write(f"constexpr int16_t TRAINED_ROUTER_B[{NUM_EXPERTS}] = {{{vals}}};\n\n")
 
-        f.write("constexpr int16_t TRAINED_EXPERT_W1[8][16][8] = {\n")
+        f.write(f"constexpr int16_t TRAINED_EXPERT_W1[{NUM_EXPERTS}][{HIDDEN_DIM}][{NUM_FEATURES}] = {{\n")
         for e in range(NUM_EXPERTS):
             f.write("    {\n")
             for h in range(HIDDEN_DIM):
@@ -417,14 +417,14 @@ def export_weights_h(params, filepath):
             f.write(f"    }}{comma}\n")
         f.write("};\n\n")
 
-        f.write("constexpr int16_t TRAINED_EXPERT_B1[8][16] = {\n")
+        f.write(f"constexpr int16_t TRAINED_EXPERT_B1[{NUM_EXPERTS}][{HIDDEN_DIM}] = {{\n")
         for e in range(NUM_EXPERTS):
             vals = ", ".join(str(quantize(params[f'b1_{e}'][h])) for h in range(HIDDEN_DIM))
             comma = "," if e < NUM_EXPERTS - 1 else ""
             f.write(f"    {{{vals}}}{comma}\n")
         f.write("};\n\n")
 
-        f.write("constexpr int16_t TRAINED_EXPERT_W2[8][16] = {\n")
+        f.write(f"constexpr int16_t TRAINED_EXPERT_W2[{NUM_EXPERTS}][{HIDDEN_DIM}] = {{\n")
         for e in range(NUM_EXPERTS):
             vals = ", ".join(str(quantize(params[f'w2_{e}'][h])) for h in range(HIDDEN_DIM))
             comma = "," if e < NUM_EXPERTS - 1 else ""
@@ -432,7 +432,7 @@ def export_weights_h(params, filepath):
         f.write("};\n\n")
 
         vals = ", ".join(str(quantize(params[f'b2_{e}'][0])) for e in range(NUM_EXPERTS))
-        f.write(f"constexpr int16_t TRAINED_EXPERT_B2[8] = {{{vals}}};\n")
+        f.write(f"constexpr int16_t TRAINED_EXPERT_B2[{NUM_EXPERTS}] = {{{vals}}};\n")
 
     print(f"  Written: {filepath}")
 
