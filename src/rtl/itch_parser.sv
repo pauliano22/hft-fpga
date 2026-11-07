@@ -73,7 +73,12 @@ state_t state, next_state;
 // Fields are big-endian in ITCH but accumulated MSB-first here
 // -------------------------------------------------------------------------
 logic [7:0]  r_msg_type;
-logic [15:0] r_msg_len;
+/* verilator lint_off UNUSED */
+logic [15:0] r_msg_len;     // captured from the wire; no longer read now that
+                             // beat-count-to-EMIT is decided by msg_type below
+                             // instead of msg_len (kept for debugging/waveform
+                             // visibility and possible future use)
+/* verilator lint_on UNUSED */
 logic [15:0] r_stock_locate;
 logic [63:0] r_order_ref;
 logic        r_side;
@@ -206,6 +211,16 @@ always_ff @(posedge clk) begin
                                           `BYTE(s_axis_tdata, 4)};
                     r_side   <= (`BYTE(s_axis_tdata, 5) == 8'h42) ? 1'b0 : 1'b1; // 'B'=bid
                     r_shares[31:16] <= {`BYTE(s_axis_tdata, 6), `BYTE(s_axis_tdata, 7)};
+                    // Delete (D) is fully parsed as of this beat (see the
+                    // next-state logic below) — assert valid now, the same
+                    // way PARSE_B4 does for the types that finish there.
+                    // Without this, the EMIT state's own "r_valid <= 1;
+                    // if (m_axis_tready) r_valid <= 0;" resolves both
+                    // assignments on the very first cycle state==EMIT
+                    // whenever downstream is already ready (which it always
+                    // is here), so m_axis_tvalid would never actually go
+                    // high for a full cycle.
+                    if (r_msg_type == 8'h44) r_valid <= 1'b1;
                 end
             end
 
@@ -220,6 +235,9 @@ always_ff @(posedge clk) begin
                     r_stock[63:16] <= {`BYTE(s_axis_tdata, 2), `BYTE(s_axis_tdata, 3),
                                        `BYTE(s_axis_tdata, 4), `BYTE(s_axis_tdata, 5),
                                        `BYTE(s_axis_tdata, 6), `BYTE(s_axis_tdata, 7)};
+                    // Cancel (X) is fully parsed as of this beat — assert
+                    // valid now (see the matching comment in PARSE_B2 above).
+                    if (r_msg_type == 8'h58) r_valid <= 1'b1;
                 end
             end
 
@@ -270,11 +288,19 @@ always_comb begin
             // inside always_comb — Verilator treats initializers as static and
             // won't re-evaluate them on signal changes. Use inline comparisons.
             if (s_axis_tvalid) begin
-                if (s_axis_tdata[23:16] == 8'h44 ||  // 'D' = Delete: 19 bytes
-                    s_axis_tdata[23:16] == 8'h58 ||  // 'X' = Cancel: 23 bytes
-                    s_axis_tdata[23:16] == 8'h45 ||  // 'E' = Execute:31 bytes
-                    s_axis_tdata[23:16] == 8'h41 ||  // 'A' = Add:    36 bytes
-                    s_axis_tdata[23:16] == 8'h46)    // 'F' = Add+MPID:40 bytes
+                if (s_axis_tdata[23:16] == 8'h44 ||  // 'D' = Delete: 19 bytes  (21 on wire, 3 beats)
+                    s_axis_tdata[23:16] == 8'h58 ||  // 'X' = Cancel: 23 bytes  (25 on wire, 4 beats)
+                    s_axis_tdata[23:16] == 8'h45 ||  // 'E' = Execute:31 bytes  (33 on wire, 5 beats)
+                    s_axis_tdata[23:16] == 8'h41)    // 'A' = Add:    36 bytes  (38 on wire, 5 beats)
+                    // NOTE: 'F' (Add w/ MPID, 40-byte body / 42 on wire) is
+                    // intentionally NOT matched here. It would need 6 beats
+                    // (one more than this FSM's longest path, PARSE_B4) and
+                    // its field layout differs from 'A' (inserts a 4-byte
+                    // MPID before the stock symbol), so treating it as
+                    // "supported" would silently misparse it and desync the
+                    // byte stream for whatever follows. Falls through to the
+                    // unsupported-type path below instead, matching the
+                    // "Supported message types" list in the file header.
                     next_state = PARSE_B1;  // beat 0 captured in IDLE → go to beat 1
                 else
                     next_state = IDLE;  // unsupported type: skip (beat 0 consumed)
@@ -287,21 +313,27 @@ always_comb begin
         end
 
         PARSE_B1: begin
-            if (s_axis_tvalid && s_axis_tready) begin
-                // 'D' (Delete) is fully parsed after beat 2 (19 bytes = ceil(19/8)=3 beats)
-                if (r_msg_type == 8'h44 && r_msg_len <= 19)
-                    next_state = PARSE_B2;
-                else
-                    next_state = PARSE_B2; // all types continue to beat 2
-            end
+            if (s_axis_tvalid && s_axis_tready)
+                next_state = PARSE_B2; // all types continue to beat 2
         end
 
         PARSE_B2: begin
             if (s_axis_tvalid && s_axis_tready) begin
-                // Delete (D): 19 bytes total (17 body + 2 len) fits in 3 beats
-                // Cancel (X): 23 bytes = 3 beats (bytes 0-23)
-                // Both are "done" after beat 2 (we have all needed fields)
-                if (r_msg_type == 8'h44 || r_msg_type == 8'h58 || r_msg_type == 8'h45)
+                // Delete (D): 19-byte body + 2-byte length prefix = 21 bytes
+                // on the wire, which fits within 3 beats (beats 0-2, i.e.
+                // offsets 0-23) — this is the only supported type that is
+                // fully received by the end of this beat.
+                //
+                // Cancel (X) and Execute (E) do NOT fit in 3 beats: X is 25
+                // bytes on the wire (needs beat 3 too) and E is 33 bytes on
+                // the wire (needs beats 3 and 4). Jumping to EMIT here for
+                // them would leave their trailing bytes unconsumed, and the
+                // next bytes on the bus — which are still part of the CURRENT
+                // message — would be misread as the start of a new message
+                // (verified with a standalone Verilator testbench: it
+                // desyncs the parser from the real message boundaries for
+                // any stream containing X or E messages).
+                if (r_msg_type == 8'h44)
                     next_state = EMIT;
                 else
                     next_state = PARSE_B3;
@@ -309,8 +341,14 @@ always_comb begin
         end
 
         PARSE_B3: begin
-            if (s_axis_tvalid && s_axis_tready)
-                next_state = PARSE_B4;
+            if (s_axis_tvalid && s_axis_tready) begin
+                // Cancel (X): 25 bytes on the wire fits within 4 beats
+                // (beats 0-3, offsets 0-31) — fully received by now.
+                if (r_msg_type == 8'h58)
+                    next_state = EMIT;
+                else
+                    next_state = PARSE_B4; // Add (A) / Execute (E): need beat 4 too
+            end
         end
 
         PARSE_B4: begin
